@@ -46,12 +46,17 @@ screen.runWritingTask(updateHour, "updateHours", 1)
 screen.onMessageReceivedEvent(message_received)
 
 # main loop for sending messages and exit the program
+loadAnimationVisible = False
+
 try:
     while True:
         inputMsg = input()
         if not (inputMsg is None):
             if inputMsg.lower() == "quit":
                 break
+            elif inputMsg.lower() == "xd":
+                loadAnimationVisible = not loadAnimationVisible
+                screen.showLoadingAnimation(loadAnimationVisible)
             else:
                 screen.sendMessage(inputMsg)
 

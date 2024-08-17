@@ -1,5 +1,6 @@
 import serial
 import threading
+import numpy as nm
 import libraries.cancellationToken as ct
 from queue import Queue
 from time import sleep
@@ -38,6 +39,9 @@ class spiScreen:
         }
 
         self.__onMessageReceivedEventSet = None
+        self.__showLoadingAnimmation = False
+
+        self.runWritingTask(self.__processLoadingAnnimation, "loading", 0.01)
 
     # end def
 
@@ -146,6 +150,29 @@ class spiScreen:
 
     # end def
 
+    def __processLoadingAnnimation(self):
+        if not hasattr(spiScreen.__processLoadingAnnimation, "i"):
+            spiScreen.__processLoadingAnnimation.i = 0  # Initialize the static variable
+
+        if self.__showLoadingAnimmation:
+
+            val = (
+                int(100 * nm.sin(spiScreen.__processLoadingAnnimation.i * nm.pi / 8))
+                + 100
+            )
+            s = f"add 2,0,{val}"
+            self.__loggingService.info(
+                f"sine = {val} i = {spiScreen.__processLoadingAnnimation.i}"
+            )
+            spiScreen.__processLoadingAnnimation.i += 1
+            return s
+        else:
+            spiScreen.__processLoadingAnnimation.i = 0
+            return "cle 2,255"
+        # end if
+
+    # end def
+
     def runWritingTask(self, task, identifier, wait=0.2):
         if identifier in self.__tasks:
             raise KeyError("Repeted key value")
@@ -175,6 +202,11 @@ class spiScreen:
             self.__loggingService.warning(f"{identifier}Thread deleted from tasks")
         else:
             self.__loggingService.warning(f"{identifier} not in tasks")
+
+    # end def
+
+    def showLoadingAnimation(self, show):
+        self.__showLoadingAnimmation = show
 
     # end def
 

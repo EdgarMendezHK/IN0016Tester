@@ -41,7 +41,7 @@ class spiScreen:
         self.__onMessageReceivedEventSet = None
         self.__showLoadingAnimmation = False
 
-        self.runWritingTask(self.__processLoadingAnnimation, "loading", 0.01)
+        self.runWritingTask(self.__processLoadingAnnimation, "loading", 1 / 60)
 
     # end def
 
@@ -105,7 +105,16 @@ class spiScreen:
         self.__loggingService.info(f"{identifier}Thread started")
 
         while not self.token.cancelled and not token.cancelled:
-            self.__outputMessages.put(task())
+            res = task()
+            if isinstance(res, str):
+                self.__outputMessages.put(res)
+            elif isinstance(res, list):
+                for item in res:
+                    if item != None and item.strip() != "":
+                        self.__outputMessages.put(item)
+                    # end if
+                # end for
+            # end if
             sleep(wait)
         # end while
 
@@ -152,20 +161,34 @@ class spiScreen:
 
     def __processLoadingAnnimation(self):
         if not hasattr(spiScreen.__processLoadingAnnimation, "i"):
-            spiScreen.__processLoadingAnnimation.i = 0  # Initialize the static variable
+            spiScreen.__processLoadingAnnimation.i = 0  # Initialize a static variable
 
         if self.__showLoadingAnimmation:
+            results = []
 
             val = (
-                int(100 * nm.sin(spiScreen.__processLoadingAnnimation.i * nm.pi / 8))
-                + 100
+                int(100 * nm.sin(spiScreen.__processLoadingAnnimation.i * nm.pi / 16))
+                + 150
             )
-            s = f"add 2,0,{val}"
-            self.__loggingService.info(
-                f"sine = {val} i = {spiScreen.__processLoadingAnnimation.i}"
-            )
+
+            for channel in [0, 1, 2, 3]:
+                offset = channel * 10
+                channelVal = val - offset
+
+                if channelVal < 0:
+                    channelVal = 0 + offset
+                elif channelVal > 255:
+                    channelVal = 255 - offset
+                # end if
+
+                s = f"add 2,{channel},{channelVal}"
+
+                results.append(s)
+            # end for
+
             spiScreen.__processLoadingAnnimation.i += 1
-            return s
+
+            return results
         else:
             spiScreen.__processLoadingAnnimation.i = 0
             return "cle 2,255"

@@ -37,6 +37,8 @@ class spiScreen:
             "writingTask": self.__createTask(writingThread),
         }
 
+        self.__onMessageReceivedEventSet = None
+
     # end def
 
     def __read(self, serial, token):
@@ -45,15 +47,21 @@ class spiScreen:
 
         while not token.cancelled:
             try:
-                s = serial.read(100)
+                s = serial.readline(100)
                 if s != b"":
                     self.__loggingService.info("Message being read")
                     m = m + s
                 if len(m) >= 2 and m[-2] == b"\r"[0] and m[-1] == b"\n"[0]:
                     message = m.decode("utf-8", errors="ignore").strip()
                     self.__loggingService.info("Message received.\n" + message)
-                    self.__inputMessages.put(message)
+
                     m = b""
+
+                    if self.__onMessageReceivedEventSet:
+                        self.__onMessageReceivedEventSet(message)
+                    else:
+                        self.__inputMessages.put(message)
+
             except Exception as e:
                 self.__loggingService.error(f"Read error: {e}")
                 print(f"Read error: {e}")
@@ -133,6 +141,11 @@ class spiScreen:
 
     # end def
 
+    def onMessageReceivedEvent(self, callback):
+        self.__onMessageReceivedEventSet = callback
+
+    # end def
+
     def runWritingTask(self, task, identifier, wait=0.2):
         if identifier in self.__tasks:
             raise KeyError("Repeted key value")
@@ -144,6 +157,11 @@ class spiScreen:
         t.start()
 
         self.__tasks[identifier] = self.__createTask(t, token)
+
+    # end def
+
+    def sendMessage(self, message):
+        self.__outputMessages.put(message)
 
     # end def
 

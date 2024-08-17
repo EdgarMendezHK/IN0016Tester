@@ -1,4 +1,5 @@
 import logging
+import threading
 import libraries.display as display
 from datetime import datetime
 from time import sleep
@@ -21,6 +22,12 @@ def updateHour():
 
 # end def
 
+
+def message_received(message):
+    print("****  " + message + "  ****")
+
+
+# initializing logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 console_handler = logging.StreamHandler()
@@ -31,23 +38,30 @@ console_handler.setFormatter(formatter)
 
 logger.addHandler(console_handler)
 
-screen = display.spiScreen(logger, "/dev/ttyS0", 9600, -True, 0)
+
+# initializing screen
+screen = display.spiScreen(logger, "/dev/ttyS0", 921600, True, 0)
 screen.runWritingTask(updateMinutes, "updateMinutes", 1)
 screen.runWritingTask(updateHour, "updateHours", 1)
+screen.onMessageReceivedEvent(message_received)
 
+# main loop for sending messages and exit the program
+try:
+    while True:
+        inputMsg = input()
+        if not (inputMsg is None):
+            if inputMsg.lower() == "quit":
+                break
+            else:
+                screen.sendMessage(inputMsg)
 
-while True:
-    inputMsg = input()
-    if not (inputMsg is None):
-        if inputMsg.lower() == "quit":
-            break
-        elif inputMsg.lower() == "seconds":
-            screen.stopTask("updateSeconds")
-        else:
-            print(screen.getInputMessage())
+            # end if
         # end if
-    # end if
-# end while
+    # end while
+except KeyboardInterrupt:
+    pass
+# end try-catch
 
+# cleaning up
 screen.closeConnection()
 print("bye")

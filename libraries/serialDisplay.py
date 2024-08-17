@@ -49,7 +49,7 @@ class spiScreen:
 
         while not token.cancelled:
             try:
-                s = serial.readline(100)
+                s = serial.readline()
                 if s != b"":
                     self.__loggingService.info("Message being read")
                     m = m + s

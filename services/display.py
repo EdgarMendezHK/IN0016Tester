@@ -51,7 +51,7 @@ class display:
 
     # end def
 
-    def __message_received(message):
+    def __message_received(self, message):
         print(message)
 
     # end def

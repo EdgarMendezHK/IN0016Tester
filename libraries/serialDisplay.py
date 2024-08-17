@@ -54,8 +54,7 @@ class spiScreen:
                     self.__loggingService.info("Message being read")
                     m = m + s
                 if len(m) >= 2 and m[-2] == b"\r"[0] and m[-1] == b"\n"[0]:
-                    message = m.decode("utf-8", errors="ignore").strip()
-                    self.__loggingService.info("Message received.\n" + message)
+                    message = m.decode("utf-8", errors="ignore")
 
                     m = b""
 
@@ -90,7 +89,6 @@ class spiScreen:
                 )  # b't0.txt="1"\xff\xff\xff'
 
                 serial.write(encodedMessage)  # sendig message to spi device
-                self.__loggingService.info("Message sent. " + userMessage)
             except Exception as e:
                 self.__loggingService.error(f"writting error: {e}")
             # end try-catch
@@ -203,6 +201,12 @@ class spiScreen:
             self.__loggingService.warning(f"{identifier}Thread deleted from tasks")
         else:
             self.__loggingService.warning(f"{identifier} not in tasks")
+
+    # end def
+
+    def showLoadingAnimation(self, show, waveFormObjectId):
+        self.__showLoadingAnimmation = show
+        self.__waveID = waveFormObjectId
 
     # end def
 

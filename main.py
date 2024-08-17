@@ -15,11 +15,17 @@ screen.runWritingTask(updateSeconds, "updateSeconds")
 
 
 sleep(5)
+
 while True:
     inputMsg = input()
     if not (inputMsg is None):
         if inputMsg.lower() == "quit":
             break
+        else:
+            print(screen.getInputMessage())
+        # end if
+    # end if
+# end while
 
 screen.closeConnection()
 print("bye")

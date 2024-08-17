@@ -8,7 +8,7 @@ from time import sleep
 class spiScreen:
 
     def __del__(self):
-        if len(self.tasks.items()) > 0 or self.serialConnection.is_open:
+        if len(self.__tasks.items()) > 0 or self.serialConnection.is_open:
             self.closeConnection()
 
     # end def
@@ -32,7 +32,7 @@ class spiScreen:
         readingThread.start()
         writingThread.start()
 
-        self.tasks = {
+        self.__tasks = {
             "readingTask": self.__createTask(readingThread),
             "writingTask": self.__createTask(writingThread),
         }
@@ -114,13 +114,13 @@ class spiScreen:
         self.token.cancel()
         self.__loggingService.warning("canceling all tasks")
 
-        for taskName, task in self.tasks.items():
+        for taskName, task in self.__tasks.items():
             self.__loggingService.info(f"joining {taskName}Thread")
             task["task"].join()
             self.__loggingService.info(f"{taskName}Thread joined")
         # end for
 
-        self.tasks.clear()
+        self.__tasks.clear()
         self.serialConnection.close()
         self.__loggingService.info(f"serial port closed")
 
@@ -134,7 +134,7 @@ class spiScreen:
     # end def
 
     def runWritingTask(self, task, identifier, wait=0.2):
-        if identifier in self.tasks:
+        if identifier in self.__tasks:
             raise KeyError("Repeted key value")
         # end if
         token = ct.cancellationToken()
@@ -143,17 +143,17 @@ class spiScreen:
         )
         t.start()
 
-        self.tasks[identifier] = self.__createTask(t, token)
+        self.__tasks[identifier] = self.__createTask(t, token)
 
     # end def
 
     def stopTask(self, identifier):
-        if identifier in self.tasks:
-            self.tasks[identifier]["cancellationToken"].cancel()
+        if identifier in self.__tasks:
+            self.__tasks[identifier]["cancellationToken"].cancel()
             self.__loggingService.warning(f"cancelling {identifier}Thread")
-            self.tasks[identifier]["task"].join()
+            self.__tasks[identifier]["task"].join()
             self.__loggingService.info(f"{identifier}Thread joined")
-            del self.tasks[identifier]
+            del self.__tasks[identifier]
             self.__loggingService.warning(f"{identifier}Thread deleted from tasks")
         else:
             self.__loggingService.warning(f"{identifier} not in tasks")

@@ -49,10 +49,8 @@ class spiScreen:
 
         while not token.cancelled:
             try:
-                s = serial.readline()
-                if s != b"":
-                    self.__loggingService.info("Message being read")
-                    m = m + s
+                m = serial.readline()
+
                 if len(m) >= 2 and m[-2] == b"\r"[0] and m[-1] == b"\n"[0]:
                     message = m.decode("utf-8", errors="ignore")
 

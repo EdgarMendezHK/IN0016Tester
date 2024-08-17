@@ -6,9 +6,8 @@ from time import sleep
 
 
 def updateSeconds():
-    sleep(1)
     now = datetime.now()
-    xd = 't1.txt="' + str(now.second).zfill(2) + '"'
+    xd = 't1.txt="' + str(now.minute).zfill(2) + '"'
     return xd
 
 
@@ -17,7 +16,7 @@ def updateSeconds():
 
 def updateMinutes():
     now = datetime.now()
-    xd = 't0.txt="' + str(now.minute).zfill(2) + '"'
+    xd = 't0.txt="' + str(now.hour).zfill(2) + '"'
     return xd
 
 
@@ -33,9 +32,9 @@ console_handler.setFormatter(formatter)
 
 logger.addHandler(console_handler)
 
-screen = display.spiScreen(logger, "/dev/ttyS0", 9600, True, 0)
-screen.runWritingTask(updateSeconds, "updateSeconds")
-screen.runWritingTask(updateMinutes, "updateMinutes")
+screen = display.spiScreen(logger, "/dev/ttyS0", 9600, -True, 0)
+screen.runWritingTask(updateSeconds, "updateSeconds", 1)
+screen.runWritingTask(updateMinutes, "updateMinutes", 1)
 
 
 sleep(5)

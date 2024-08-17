@@ -1,5 +1,5 @@
 import logging
-import libraries.display as display
+import libraries.serialDisplay as serialDisplay
 from datetime import datetime
 
 
@@ -38,7 +38,7 @@ logger.addHandler(console_handler)
 
 
 # initializing screen
-screen = display.spiScreen(logger, "/dev/ttyS0", 921600, True, 0)
+screen = serialDisplay.spiScreen(logger, "/dev/ttyS0", 921600, True, 0)
 screen.runWritingTask(updateMinutes, "updateMinutes", 1)
 screen.runWritingTask(updateHour, "updateHours", 1)
 screen.onMessageReceivedEvent(message_received)

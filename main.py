@@ -1,28 +1,8 @@
 import logging
+import json
 import libraries.serialDisplay as serialDisplay
 from datetime import datetime
-
-
-def updateMinutes():
-    now = datetime.now()
-    xd = 'minuteTxt.txt="' + str(now.minute).zfill(2) + '"'
-    return xd
-
-
-# end def
-
-
-def updateHour():
-    now = datetime.now()
-    xd = 'hourTxt.txt="' + str(now.hour).zfill(2) + '"'
-    return xd
-
-
-# end def
-
-
-def message_received(message):
-    print("****  " + message + "  ****")
+from services.display import display
 
 
 # initializing logger
@@ -37,11 +17,15 @@ console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
 
-# initializing screen
-screen = serialDisplay.spiScreen(logger, "/dev/ttyS0", 921600, True, 0)
-screen.runWritingTask(updateMinutes, "updateMinutes", 1)
-screen.runWritingTask(updateHour, "updateHours", 1)
-screen.onMessageReceivedEvent(message_received)
+def loadConfig():
+    with open("appsettings.json", "r") as file:
+        config = json.load(file)
+    return config
+
+
+config = loadConfig()
+
+screen = display(config["serial"], logger)
 
 # main loop for sending messages and exit the program
 loadAnimationVisible = False
@@ -53,8 +37,8 @@ try:
             if inputMsg.lower() == "quit":
                 break
             elif inputMsg.lower() == "xd":
+                screen.showLoadingAnimation(loadAnimationVisible, 2)
                 loadAnimationVisible = not loadAnimationVisible
-                screen.showLoadingAnimation(loadAnimationVisible, 5)
             else:
                 screen.sendMessage(inputMsg)
 

@@ -4,6 +4,7 @@ import numpy as nm
 import libraries.cancellationToken as ct
 from queue import Queue
 from time import sleep
+from typing import Callable, Union, List
 
 
 class spiScreen:
@@ -39,9 +40,6 @@ class spiScreen:
         }
 
         self.__onMessageReceivedEventSet = None
-        self.__showLoadingAnimmation = False
-
-        self.runWritingTask(self.__processLoadingAnnimation, "loading", 1 / 60)
 
     # end def
 
@@ -159,50 +157,30 @@ class spiScreen:
 
     # end def
 
-    def __processLoadingAnnimation(self):
-        if not hasattr(spiScreen.__processLoadingAnnimation, "i"):
-            spiScreen.__processLoadingAnnimation.i = 0  # Initialize a static variable
+    def runWritingTask(
+        self,
+        callback: Callable[[], Union[str, List[str]]],
+        identifier: str,
+        wait: float = 0.2,
+    ) -> None:
+        """
+        Executes the given callback in a new thread and sends it result to the spi device
 
-        if self.__showLoadingAnimmation:
-            results = []
+        Arguments:
+            callback (Callable[[], Union[str, List[str]]]): The callback function to call.
+            identifier (str): Name of the thread. *This identifier can be used later to stop the thread*.
+            wait (float): time for the thread to sleep in seconds after executing the call.
 
-            val = (
-                int(100 * nm.sin(spiScreen.__processLoadingAnnimation.i * nm.pi / 16))
-                + 150
-            )
-
-            for channel in [0, 1, 2, 3]:
-                offset = channel * 10
-                channelVal = val - offset
-
-                if channelVal < 0:
-                    channelVal = 0 + offset
-                elif channelVal > 255:
-                    channelVal = 255 - offset
-                # end if
-
-                s = f"add {self.__waveID},{channel},{channelVal}"
-
-                results.append(s)
-            # end for
-
-            spiScreen.__processLoadingAnnimation.i += 1
-
-            return results
-        else:
-            spiScreen.__processLoadingAnnimation.i = 0
-            return "cle 2,255"
-        # end if
-
-    # end def
-
-    def runWritingTask(self, task, identifier, wait=0.2):
+        Returns:
+            None
+        """
         if identifier in self.__tasks:
             raise KeyError("Repeted key value")
         # end if
         token = ct.cancellationToken()
         t = threading.Thread(
-            target=self.__writingTaskAux, args=[task, token, identifier, wait]
+            target=self.__writingTaskAux,
+            args=[callback, token, identifier, wait],
         )
         t.start()
 
@@ -225,12 +203,6 @@ class spiScreen:
             self.__loggingService.warning(f"{identifier}Thread deleted from tasks")
         else:
             self.__loggingService.warning(f"{identifier} not in tasks")
-
-    # end def
-
-    def showLoadingAnimation(self, show, waveFormObjectId):
-        self.__showLoadingAnimmation = show
-        self.__waveID = waveFormObjectId
 
     # end def
 

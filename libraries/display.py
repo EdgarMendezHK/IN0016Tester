@@ -181,7 +181,7 @@ class spiScreen:
                     channelVal = 255 - offset
                 # end if
 
-                s = f"add 2,{channel},{channelVal}"
+                s = f"add {self.__waveID},{channel},{channelVal}"
 
                 results.append(s)
             # end for
@@ -228,8 +228,9 @@ class spiScreen:
 
     # end def
 
-    def showLoadingAnimation(self, show):
+    def showLoadingAnimation(self, show, waveFormObjectId):
         self.__showLoadingAnimmation = show
+        self.__waveID = waveFormObjectId
 
     # end def
 

@@ -1,13 +1,11 @@
 import logging
-import threading
 import libraries.display as display
 from datetime import datetime
-from time import sleep
 
 
 def updateMinutes():
     now = datetime.now()
-    xd = 't1.txt="' + str(now.minute).zfill(2) + '"'
+    xd = 'minuteTxt.txt="' + str(now.minute).zfill(2) + '"'
     return xd
 
 
@@ -16,7 +14,7 @@ def updateMinutes():
 
 def updateHour():
     now = datetime.now()
-    xd = 't0.txt="' + str(now.hour).zfill(2) + '"'
+    xd = 'hourTxt.txt="' + str(now.hour).zfill(2) + '"'
     return xd
 
 
@@ -56,7 +54,7 @@ try:
                 break
             elif inputMsg.lower() == "xd":
                 loadAnimationVisible = not loadAnimationVisible
-                screen.showLoadingAnimation(loadAnimationVisible)
+                screen.showLoadingAnimation(loadAnimationVisible, 5)
             else:
                 screen.sendMessage(inputMsg)
 

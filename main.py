@@ -1,11 +1,10 @@
 import logging
 import libraries.display as display
-import logging
 from datetime import datetime
 from time import sleep
 
 
-def updateSeconds():
+def updateMinutes():
     now = datetime.now()
     xd = 't1.txt="' + str(now.minute).zfill(2) + '"'
     return xd
@@ -14,7 +13,7 @@ def updateSeconds():
 # end def
 
 
-def updateMinutes():
+def updateHour():
     now = datetime.now()
     xd = 't0.txt="' + str(now.hour).zfill(2) + '"'
     return xd
@@ -33,11 +32,9 @@ console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
 screen = display.spiScreen(logger, "/dev/ttyS0", 9600, -True, 0)
-screen.runWritingTask(updateSeconds, "updateSeconds", 1)
 screen.runWritingTask(updateMinutes, "updateMinutes", 1)
+screen.runWritingTask(updateHour, "updateHours", 1)
 
-
-sleep(5)
 
 while True:
     inputMsg = input()
@@ -50,7 +47,7 @@ while True:
             print(screen.getInputMessage())
         # end if
     # end if
-# end w hile
+# end while
 
 screen.closeConnection()
 print("bye")

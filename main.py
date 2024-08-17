@@ -21,11 +21,13 @@ while True:
     if not (inputMsg is None):
         if inputMsg.lower() == "quit":
             break
+        elif inputMsg.lower() == "seconds":
+            screen.stopTask("updateSeconds")
         else:
             print(screen.getInputMessage())
         # end if
     # end if
-# end while
+# end w hile
 
 screen.closeConnection()
 print("bye")

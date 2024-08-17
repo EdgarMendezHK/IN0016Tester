@@ -11,7 +11,8 @@ class spiScreen:
             self.closeConnection()
 
     # end def
-    def __init__(self, port, baudrate, rtsCts, timeout=0):
+    def __init__(self, logger, port, baudrate, rtsCts, timeout=0):
+        self.__loggingSerivice = logger
         self.__outputMessages = Queue(maxsize=100)
         self.__inputMessages = Queue(maxsize=100)
 
@@ -23,7 +24,6 @@ class spiScreen:
         readingThread = threading.Thread(
             target=self.__read, args=[self.serialConnection, self.token]
         )
-
         writingThread = threading.Thread(
             target=self.__write, args=[self.serialConnection, self.token]
         )
@@ -40,43 +40,62 @@ class spiScreen:
 
     def __read(self, serial, token):
         m = b""
+        self.__loggingSerivice.info("readingThread started started")
 
         while not token.cancelled:
             try:
                 s = serial.read(100)
                 if s != b"":
+                    self.__loggingSerivice.info("Message being read")
                     m = m + s
                 if len(m) >= 2 and m[-2] == b"\r"[0] and m[-1] == b"\n"[0]:
-                    self.__inputMessages.put(m.decode("utf-8", errors="ignore").strip())
+                    message = m.decode("utf-8", errors="ignore").strip()
+                    self.__loggingSerivice.info("Message received.\n" + message)
+                    self.__inputMessages.put(message)
                     m = b""
             except Exception as e:
+                self.__loggingSerivice.error(f"Read error: {e}")
                 print(f"Read error: {e}")
+            # end try-except
+        # end while
+        self.__loggingSerivice.warning("readingThread finished")
 
     # end def
 
     def __write(self, serial, token):
+        self.__loggingSerivice.info("writingThread started")
         while not token.cancelled:
-            # if there are not queued messages will remain in here
-            if self.__outputMessages.qsize() == 0:
-                continue
-            # end if
+            try:
+                # if there are not queued messages will remain in here
+                if self.__outputMessages.qsize() == 0:
+                    continue
+                # end if
 
-            userMessage = self.__outputMessages.get()
+                userMessage = self.__outputMessages.get()
 
-            # enter t0.txt="1" to set text to 1
-            encodedMessage = (
-                userMessage.encode("utf-8") + b"\xff\xff\xff"
-            )  # b't0.txt="1"\xff\xff\xff'
+                # enter t0.txt="1" to set text to 1
+                encodedMessage = (
+                    userMessage.encode("utf-8") + b"\xff\xff\xff"
+                )  # b't0.txt="1"\xff\xff\xff'
 
-            serial.write(encodedMessage)  # sendig message to spi device
+                serial.write(encodedMessage)  # sendig message to spi device
+                self.__loggingSerivice.info("Message sent. " + userMessage)
+            except Exception as e:
+                self.__loggingSerivice.error(f"writting error: {e}")
+            # end try-catch
         # end while
+        self.__loggingSerivice.warning("WritingThread finished")
 
     # end def
 
-    def __writingTaskAux(self, task, token):
+    def __writingTaskAux(self, task, token, identifier):
+        self.__loggingSerivice.info(f"{identifier}Thread started")
+
         while not self.token.cancelled and not token.cancelled:
             self.__outputMessages.put(task())
         # end while
+
+        self.__loggingSerivice.warning(f"{identifier}Thread finished")
 
     # end def
 
@@ -91,17 +110,17 @@ class spiScreen:
 
     def closeConnection(self):
         self.token.cancel()
+        self.__loggingSerivice.warning("canceling all tasks")
 
         for taskName, task in self.tasks.items():
-
+            self.__loggingSerivice.info(f"joining {taskName}Thread")
             task["task"].join()
-            print(taskName + " finished and joined to main thread")
+            self.__loggingSerivice.info(f"{taskName}Thread joined")
         # end for
 
         self.tasks.clear()
         self.serialConnection.close()
-
-        print("Connection with spi display closed")
+        self.__loggingSerivice.info(f"serial port closed")
 
     # end def
 
@@ -117,7 +136,9 @@ class spiScreen:
             raise KeyError("Repeted key value")
         # end if
         token = ct.cancellationToken()
-        t = threading.Thread(target=self.__writingTaskAux, args=[task, token])
+        t = threading.Thread(
+            target=self.__writingTaskAux, args=[task, token, identifier]
+        )
         t.start()
 
         self.tasks[identifier] = self.__createTask(t, token)
@@ -127,9 +148,13 @@ class spiScreen:
     def stopTask(self, identifier):
         if identifier in self.tasks:
             self.tasks[identifier]["cancellationToken"].cancel()
+            self.__loggingSerivice.warning(f"cancelling {identifier}Thread")
             self.tasks[identifier]["task"].join()
+            self.__loggingSerivice.info(f"{identifier}Thread joined")
             del self.tasks[identifier]
-            print(identifier + " stopped and joined to main thread")
+            self.__loggingSerivice.warning(f"{identifier}Thread deleted from tasks")
+        else:
+            self.__loggingSerivice.warining(f"{identifier} not in tasks")
 
     # end def
 

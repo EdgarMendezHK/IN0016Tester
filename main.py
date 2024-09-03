@@ -31,7 +31,7 @@ def main(name, config):
 
     # initializing openocd service
     openOCDService = openOCD(config["openocd"])
-    print(openOCDService.burnTestProgram())
+    print(openOCDService.burn_test_program())
     # initializing screen service
     screen = display(config["serial"], logger)
 

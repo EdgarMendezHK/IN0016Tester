@@ -8,45 +8,14 @@ class openOCD:
     _COMMAND = ["sudo", "openocd", "-f", "interface/raspberrypi-native.cfg", "-f"]
 
     def __init__(self, config: Dict[str, Any]) -> None:
-        """ """
+        """Initialize OpenOCD with the given configuration."""
 
-        if "path" in config:
-            absolutePath = os.path.abspath(os.getcwd())
-            path = absolutePath + config["path"]
-            os.chdir(path)
+        path = self._check_for_key_in_section("path", config)
+        # changing directory so that it can look for the other keys if they exist
+        os.chdir(path)
 
-            if not os.path.exists(path):
-                raise KeyError("path does not exist")
-            # end if
-        else:
-            raise KeyError("there's no path at openocd section")
-
-        # end if
-
-        test = ""
-
-        if "testProgram" in config:
-            if os.path.exists(config["testProgram"]):
-                test = config["testProgram"]
-            else:
-                raise KeyError("the file " + config["testProgram"] + " does not exist")
-            # end if
-        else:
-            raise KeyError("there is not testPorgram section at opencd section")
-        # end if
-
-        firmware = ""
-
-        if "firmware" in config:
-
-            if os.path.exists(config["firmware"]):
-                firmware = config["firmware"]
-            else:
-                raise KeyError("there file" + config["firmware"] + "does not exist")
-            # end if
-        else:
-            raise KeyError("there is not testPorgram section at opencd section")
-        # end if
+        test = self._check_for_key_in_section("testProgram", config)
+        firmware = self._check_for_key_in_section("firmware", config)
 
         self.__test = test
         self.__firmware = firmware
@@ -54,14 +23,34 @@ class openOCD:
 
     # end def
 
-    def __executeCommand(self, file):
+    def _check_for_key_in_section(self, key, dictionary):
+        """Check for the given key in the dictionary and verify the path exists."""
+        if key in dictionary:
+            absolutePath = os.path.abspath(os.getcwd()) + "/"
+            path = absolutePath + dictionary[key]
+
+            if not os.path.exists(path):
+                raise KeyError(f"path {path} does not exist")
+            else:
+                return path
+            # end if
+
+        else:
+            raise KeyError("there's no path at openocd section")
+
+        # end if
+
+    # end def
+
+    def _execute_command(self, file):
+        """Execute the OpenOCD command with the given file."""
         command = self._COMMAND
         command.append(file)
 
         path = pathlib.Path(__file__).parent.resolve()
         path = path.parent / self.__path
 
-        os.chdir(path)
+        # os.chdir(path)
 
         result = subprocess.run(command, capture_output=True, text=True)
 
@@ -74,15 +63,17 @@ class openOCD:
 
     # end def
 
-    def burnTestProgram(self):
-        return self.__executeCommand(self.__test)
+    def burn_test_program(self):
+        """Burn the microcontroller with the test program."""
+        return self._execute_command(self.__test)
 
     # end def
 
-    def burnFirmware(self):
-        return self.__executeCommand(self.__firmware)
+    def burn_firmware(self):
+        """Burn the microcontroller with the firmware."""
+        return self._execute_command(self.__firmware)
 
-    # end defs
+    # end def
 
 
 # end class

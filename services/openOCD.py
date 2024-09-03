@@ -1,6 +1,7 @@
 from typing import Dict, Any
 import os
 import subprocess
+import pathlib
 
 
 class openOCD:
@@ -28,7 +29,7 @@ class openOCD:
             if os.path.exists(config["testProgram"]):
                 test = config["testProgram"]
             else:
-                raise KeyError("the file" + config["testProgram"] + "does not exist")
+                raise KeyError("the file " + config["testProgram"] + " does not exist")
             # end if
         else:
             raise KeyError("there is not testPorgram section at opencd section")
@@ -49,6 +50,7 @@ class openOCD:
 
         self.__test = test
         self.__firmware = firmware
+        self.__path = path
 
     # end def
 
@@ -56,10 +58,19 @@ class openOCD:
         command = self._COMMAND
         command.append(file)
 
+        path = pathlib.Path(__file__).parent.resolve()
+        path = path.parent / self.__path
+
+        os.chdir(path)
+
         result = subprocess.run(command, capture_output=True, text=True)
 
         # Print the output and errors
-        return {"Output:", result.stdout, "Error:", result.stderr}
+        return {
+            "Output:": result.stdout,
+            "Error:": result.stderr,
+            "Success": result.returncode == 0,
+        }
 
     # end def
 

@@ -52,6 +52,9 @@ class display:
         self.__showLoadingAnimation = False
         self.__waveID = 0
 
+        self.__clock_lock = threading.Lock()
+        self.__runClock = False
+
         screen.runWritingTask(self.__updateTime, "datetimeUpdate", 1)
         screen.runWritingTask(self.__processLoadingAnnimation, "loading", 1 / 60)
 
@@ -64,6 +67,8 @@ class display:
         self.__mapEvents()
 
         self.__boardService = boardService
+
+        self.__message_received("page0")
 
     # end def
 
@@ -98,6 +103,12 @@ class display:
 
         if function in self.__onMessageReceivedevents:
 
+            # if the command is different to page0 the clock task will stop in order to free the outputMessages queue
+            if function == "page0":
+                self.__runClockTask(True)
+            else:
+                self.__runClockTask(False)
+
             return (
                 self.__onMessageReceivedevents[function](params)
                 if len(params) > 0
@@ -110,7 +121,7 @@ class display:
 
     def __processLoadingAnnimation(self):
         with self.__showLoadingAnimation_lock:
-            show_loading = self.showLoadingAnimation
+            show_loading = self.__showLoadingAnimation
 
         if not hasattr(display.__processLoadingAnnimation, "i"):
             display.__processLoadingAnnimation.i = 0  # Initialize a static variable
@@ -139,11 +150,26 @@ class display:
 
             return results
         else:
+            ret = None
+
+            if display.__processLoadingAnnimation.i > 0:
+                ret = "cle 2,255"
+
+            # end if
+
             display.__processLoadingAnnimation.i = 0
-            return "cle 2,255"
+            time.sleep(1)
+
+            return ret
         # end if
 
     # end def
+
+    def __runClockTask(self, run: bool):
+        with self.__clock_lock:
+            self.__runClock = run
+
+    # end with
 
     def __startPage0(self):
         self.sendMessage("page 0")
@@ -160,7 +186,6 @@ class display:
 
         # checking for wave id to run the loading animation thread
         animationStarted = False
-        self.sendMessage("cle 2,255")  # cleaning id 2 waveform
 
         for part in message:
             if part.lower().index("waveid=") >= 0:
@@ -186,16 +211,17 @@ class display:
 
         # end while
 
+        # turn off loadiding animation
+        if animationStarted:
+            self.showLoadingAnimation(False, waveId[1])
+            self.sendMessage("cle 2,255")  # cleaning id 2 waveform
+
         # go to page 3 if succesfuly programmed
         if xd:
             self.sendMessage("page 3")
 
         else:
             self.sendMessage("page 8")
-
-        # turn off loadiding animation
-        if animationStarted:
-            self.showLoadingAnimation(False, waveId[1])
 
     # end def
 
@@ -226,10 +252,18 @@ class display:
     # end def
 
     def __updateTime(self):
-        now = datetime.now()
-        hours = 'hourTxt.txt="' + str(now.hour).zfill(2) + '"'
-        minutes = 'minuteTxt.txt="' + str(now.minute).zfill(2) + '"'
-        return [hours, minutes]
+        with self.__clock_lock:
+            execute = self.__runClock
+        # end with
+
+        if execute:
+            now = datetime.now()
+            hours = 'hourTxt.txt="' + str(now.hour).zfill(2) + '"'
+            minutes = 'minuteTxt.txt="' + str(now.minute).zfill(2) + '"'
+            return [hours, minutes]
+        # end if
+
+        return None
 
     # end def
 

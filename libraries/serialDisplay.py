@@ -51,10 +51,9 @@ class spiScreen:
                 m = serial.readline()
                 m = bytes(filter(lambda x: x in range(32, 127), m))
 
-                if len(m) >= 2 and m[-2] == b"\r"[0] and m[-1] == b"\n"[0]:
+                if m != b"":
+                    m += b"\r\n"
                     message = m.decode("utf-8", errors="ignore")
-
-                    m = b""
 
                     if self.__onMessageReceivedEventSet:
                         self.__onMessageReceivedEventSet(message)
@@ -65,6 +64,7 @@ class spiScreen:
                 self.__loggingService.error(f"Read error: {e}")
                 print(f"Read error: {e}")
             # end try-except
+
         # end while
         self.__loggingService.warning("readingThread finished")
 
@@ -99,9 +99,12 @@ class spiScreen:
         self.__loggingService.info(f"{identifier}Thread started")
 
         while not self.token.cancelled and not token.cancelled:
+
             res = task()
+
             if isinstance(res, str):
                 self.__outputMessages.put(res)
+
             elif isinstance(res, list):
                 for item in res:
                     if item != None and item.strip() != "":

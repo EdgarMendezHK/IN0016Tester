@@ -1,7 +1,7 @@
 import logging
 import json
-import libraries.serialDisplay as serialDisplay
 from services.openOCD import openOCD
+from services.board import board
 from datetime import datetime
 from services.display import display
 
@@ -31,9 +31,11 @@ def main(name, config):
 
     # initializing openocd service
     openOCDService = openOCD(config["openocd"])
-    print(openOCDService.burn_test_program())
+
+    boardService = board(openOCDService, config["pcbConfig"], logger)
+
     # initializing screen service
-    screen = display(config["serial"], logger)
+    screen = display(config["displayConfig"], boardService, logger)
 
     # main loop for sending messages and exit the program
     loadAnimationVisible = False
@@ -58,7 +60,7 @@ def main(name, config):
     # end try-catch
 
     # cleaning up
-    screen.closeConnection()
+    screen.dispose()
 
     print("bye")
 

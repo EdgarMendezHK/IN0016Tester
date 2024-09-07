@@ -1,6 +1,5 @@
 import serial
 import threading
-import numpy as nm
 import libraries.cancellationToken as ct
 from queue import Queue
 from time import sleep
@@ -43,7 +42,7 @@ class spiScreen:
 
     # end def
 
-    def __read(self, serial, token):
+    def __read(self, serial: serial, token):
         m = b""
         self.__loggingService.info("readingThread started started")
 

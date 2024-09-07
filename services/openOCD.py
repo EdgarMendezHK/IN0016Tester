@@ -44,7 +44,7 @@ class openOCD:
 
     def _execute_command(self, file):
         """Execute the OpenOCD command with the given file."""
-        command = self._COMMAND
+        command = self._COMMAND.copy()
         command.append(file)
 
         path = pathlib.Path(__file__).parent.resolve()

@@ -4,11 +4,16 @@ from datetime import datetime
 import logging
 from typing import Dict, Any
 import threading
+from services.board import board
+import time
 
 
 class display:
     def __init__(
-        self, communicationInfoJson: Dict[str, Any], logger: logging.Logger = None
+        self,
+        communicationInfoJson: Dict[str, Any],
+        boardService: board,
+        logger: logging.Logger = None,
     ) -> None:
         """
         Initialize a new instance for the serial display device.
@@ -30,6 +35,10 @@ class display:
                 raise ValueError(f"Missing required key: {key}")
             # end if
         # end for
+
+        if not boardService:
+            raise ValueError("openOCDService must not be None")
+        # end if
 
         screen = serilDisplay.spiScreen(
             logger,
@@ -53,6 +62,8 @@ class display:
         self.__onMessageReceivedevents = {}
 
         self.__mapEvents()
+
+        self.__boardService = boardService
 
     # end def
 
@@ -148,35 +159,69 @@ class display:
         # separating command from parameters.
 
         # checking for wave id to run the loading animation thread
+        animationStarted = False
+        self.sendMessage("cle 2,255")  # cleaning id 2 waveform
+
         for part in message:
             if part.lower().index("waveid=") >= 0:
                 waveId = part.split("=")
                 if len(waveId) == 2:
                     self.showLoadingAnimation(True, waveId[1])
+                    animationStarted = True
                 # end if
             # end if
         # end for
 
+        # go to page 2
         self.sendMessage("page 2")
+
         # load test program to microcontroller
-        # go to page 3
-        # if failed to program try again up to 3 times
-        # if failed once more finish the test and go to page 8
+        attempts = 0
+        xd = False
+
+        while attempts < 3 and not xd:
+            time.sleep(1)
+            xd = self.__boardService.LoadTestProgram()
+            attempts = attempts + 1
+
+        # end while
+
+        # go to page 3 if succesfuly programmed
+        if xd:
+            self.sendMessage("page 3")
+
+        else:
+            self.sendMessage("page 8")
+
         # turn off loadiding animation
+        if animationStarted:
+            self.showLoadingAnimation(False, waveId[1])
 
     # end def
 
     def __startPage3(self):
-
-        self.__sendMessage(
-            ""
-        )  # delete this line. its was added only not to show errors
         # start a timer for 5 seconds or something
         # check on modbus messages to check if the button was pressed
-        # if not show the next button and tell the user to check if the led started
-        # so that it has to be a button to tell that it didnt worked
-        # i was thinking in setting a 10 minuite timer to cancel the test in case the user leave the test running
-        # also need to add a cancel test button on every screen
+        timeout = 30
+        startTime = time.time()
+
+        print("running page 3")
+        while True:
+            if time.time() - startTime > timeout:
+                return
+            # end if
+            message = self.__boardService.getMessage()
+            print(message)
+
+            if message is not None and message.strip() == "DispBtn On":
+                self.__screen.sendMessage("page 4")
+                break
+            # end if
+
+        # end while
+
+        # need to add a cancel test button on every screen
+        pass
 
     # end def
 
@@ -188,14 +233,15 @@ class display:
 
     # end def
 
-    def closeConnection(self) -> None:
+    def dispose(self) -> None:
         """
-        Close serial communication and free resources
+        Free resources and close serial communication.
 
         Returns:
             None
         """
         self.__screen.closeConnection()
+        self.__boardService.dispose()
 
     # end def
 

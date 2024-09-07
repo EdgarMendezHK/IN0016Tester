@@ -50,3 +50,6 @@ package.nls.*.json
 l10n/
 python-env-tools/**
 Resources/openocd/*
+__pycache__/
+**/__pycache__/
+myenv/

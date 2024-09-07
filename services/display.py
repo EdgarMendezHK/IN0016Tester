@@ -37,7 +37,7 @@ class display:
         # end for
 
         if not boardService:
-            raise ValueError("openOCDService must not be None")
+            raise ValueError("boardService must not be None")
         # end if
 
         screen = serilDisplay.spiScreen(
@@ -60,7 +60,7 @@ class display:
 
         screen.onMessageReceivedEvent(self.__message_received)
 
-        self.__screen = screen
+        self.__screenService = screen
 
         self.__onMessageReceivedevents = {}
 
@@ -80,6 +80,7 @@ class display:
             "page1": self.__startPage1,
             "page2": self.__startPage2,
             "page3": self.__startPage3,
+            "page4": self.__startPage4,
         }
 
     # end def
@@ -104,10 +105,7 @@ class display:
         if function in self.__onMessageReceivedevents:
 
             # if the command is different to page0 the clock task will stop in order to free the outputMessages queue
-            if function == "page0":
-                self.__runClockTask(True)
-            else:
-                self.__runClockTask(False)
+            self.__runClockTask(function == "page0")
 
             return (
                 self.__onMessageReceivedevents[function](params)
@@ -118,6 +116,21 @@ class display:
         # end if
 
     # end def
+
+    def __printError(self, message):
+        listOfWords = message.split(" ")
+        firstSec = listOfWords[int(len(listOfWords) / 3)]
+        secondSec = listOfWords[int(len(listOfWords) / 3 * 2)]
+        pt1 = message[: message.index(firstSec)].strip()
+        pt2 = message[message.index(firstSec) : message.index(secondSec)].strip()
+        pt3 = message[message.index(secondSec) :].strip()
+
+        self.__screenService.sendMessage('xstr 34,19,250,35,0,WHITE,0,1,1,0,"Error"')
+        self.__screenService.sendMessage(f'xstr 34,54,250,35,0,WHITE,0,1,1,0,"{pt1}"')
+
+        self.__screenService.sendMessage(f'xstr 34,89,250,35,0,WHITE,0,1,1,0,"{pt2}"')
+
+        self.__screenService.sendMessage(f'xstr 34,124,250,35,0,WHITE,0,1,1,0,"{pt3}"')
 
     def __processLoadingAnnimation(self):
         with self.__showLoadingAnimation_lock:
@@ -172,12 +185,12 @@ class display:
     # end with
 
     def __startPage0(self):
-        self.sendMessage("page 0")
+        self.__screenService.sendMessage("page 0")
 
     # end def
 
     def __startPage1(self):
-        self.sendMessage("page 1")
+        self.__screenService.sendMessage("page 1")
 
     # end def
 
@@ -198,7 +211,7 @@ class display:
         # end for
 
         # go to page 2
-        self.sendMessage("page 2")
+        self.__screenService.sendMessage("page 2")
 
         # load test program to microcontroller
         attempts = 0
@@ -214,33 +227,47 @@ class display:
         # turn off loadiding animation
         if animationStarted:
             self.showLoadingAnimation(False, waveId[1])
-            self.sendMessage("cle 2,255")  # cleaning id 2 waveform
+            self.__screenService.sendMessage("cle 2,255")  # cleaning id 2 waveform
 
         # go to page 3 if succesfuly programmed
         if xd:
-            self.sendMessage("page 3")
+            self.__screenService.sendMessage("page 3")
 
         else:
-            self.sendMessage("page 8")
+            self.__screenService.sendMessage("page 6")
+            self.__printError("No se pudo programar la tarjeta")
 
     # end def
 
     def __startPage3(self):
-        # start a timer for 5 seconds or something
-        # check on modbus messages to check if the button was pressed
-        timeout = 30
+        self.__testButton("DispBtn On\r\n", 4)
+
+    # end def
+
+    def __startPage4(self):
+        self.__testButton("RefillBtn On\r\n", 5)
+
+    # end def
+
+    def __testButton(self, expectedMessage: str, nextPage: int) -> None:
+        # start a timer for 10 seconds or something
+        timeout = 10
         startTime = time.time()
 
-        print("running page 3")
         while True:
             if time.time() - startTime > timeout:
+                self.__screenService.sendMessage("page 6")
+                self.__screenService.sendMessage(
+                    "xstr 10,10,100,100,0,WHITE,GREEN,2,1,0,XD"
+                )
                 return
             # end if
-            message = self.__boardService.getMessage()
-            print(message)
 
-            if message is not None and message.strip() == "DispBtn On":
-                self.__screen.sendMessage("page 4")
+            # check on input messages messages to check if the button was pressed
+            message = self.__boardService.getMessage()
+
+            if isinstance(message, str) and message.strip() == expectedMessage:
+                self.__screenService.sendMessage("page " + str(nextPage))
                 break
             # end if
 
@@ -274,13 +301,13 @@ class display:
         Returns:
             None
         """
-        self.__screen.closeConnection()
+        self.__screenService.closeConnection()
         self.__boardService.dispose()
 
     # end def
 
     def sendMessage(self, message):
-        self.__screen.sendMessage(message)
+        self.__screenService.sendMessage(message)
 
     def showLoadingAnimation(self, show, waveFormObjectId):
         with self.__showLoadingAnimation_lock:

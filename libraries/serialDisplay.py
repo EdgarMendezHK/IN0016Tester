@@ -49,6 +49,7 @@ class spiScreen:
         while not token.cancelled:
             try:
                 m = serial.readline()
+                m = bytes(filter(lambda x: x in range(32, 127), m))
 
                 if len(m) >= 2 and m[-2] == b"\r"[0] and m[-1] == b"\n"[0]:
                     message = m.decode("utf-8", errors="ignore")

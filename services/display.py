@@ -151,6 +151,8 @@ class display:
             splittedMessage = splittedMessage[:2]
             splittedMessage.append(s)
 
+        self.__screenService.sendMessage('errorMsg.txt=""')
+
         self.__screenService.sendMessage('xstr 34,19,250,35,0,WHITE,0,1,1,0,"Error"')
 
         y = 19 + 35
@@ -296,6 +298,7 @@ class display:
         # go to page 3 if succesfuly programmed
         if xd:
             self.__screenService.sendMessage("page 3")
+            self.__startPage3()
 
         else:
             self.__screenService.sendMessage("page 6")

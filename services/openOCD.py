@@ -5,7 +5,7 @@ import pathlib
 
 
 class openOCD:
-    _COMMAND = ["sudo", "openocd", "-f", "interface/raspberrypi-native.cfg", "-f"]
+    __COMMAND = ["sudo", "openocd", "-f", "interface/raspberrypi-native.cfg", "-f"]
 
     def __init__(self, config: Dict[str, Any]) -> None:
         """Initialize OpenOCD with the given configuration."""
@@ -44,7 +44,7 @@ class openOCD:
 
     def _execute_command(self, file):
         """Execute the OpenOCD command with the given file."""
-        command = self._COMMAND.copy()
+        command = self.__COMMAND.copy()
         command.append(file)
 
         path = pathlib.Path(__file__).parent.resolve()

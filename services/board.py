@@ -30,8 +30,13 @@ class board:
 
         self._openOCD_service = openocdSerivce
 
-    def LoadTestProgram(self):
-        return self._openOCD_service.burn_test_program()["Success"]
+    def LoadTestProgram(self) -> bool:
+        result = self._openOCD_service.burn_test_program()
+
+        if not result["Success"]:
+            print(result)
+
+        return result["Success"]
 
     # end def
     def LoadFirmware(self):

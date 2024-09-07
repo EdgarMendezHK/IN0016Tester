@@ -35,7 +35,7 @@ def main(name, config):
     boardService = board(openOCDService, config["pcbConfig"], logger)
 
     # initializing screen service
-    screen = display(config["displayConfig"], boardService, logger)
+    screen = display(config["displayConfig"], config["errorFont"], boardService, logger)
 
     # main loop for sending messages and exit the program
     loadAnimationVisible = False

@@ -10,12 +10,12 @@ class openOCD:
     def __init__(self, config: Dict[str, Any]) -> None:
         """Initialize OpenOCD with the given configuration."""
 
-        path = self._check_for_key_in_section("path", config)
+        path = self.__check_for_key_in_section("path", config)
         # changing directory so that it can look for the other keys if they exist
         os.chdir(path)
 
-        test = self._check_for_key_in_section("testProgram", config)
-        firmware = self._check_for_key_in_section("firmware", config)
+        test = self.__check_for_key_in_section("testProgram", config)
+        firmware = self.__check_for_key_in_section("firmware", config)
 
         self.__test = test
         self.__firmware = firmware
@@ -23,7 +23,7 @@ class openOCD:
 
     # end def
 
-    def _check_for_key_in_section(self, key, dictionary):
+    def __check_for_key_in_section(self, key, dictionary):
         """Check for the given key in the dictionary and verify the path exists."""
         if key in dictionary:
             absolutePath = os.path.abspath(os.getcwd()) + "/"

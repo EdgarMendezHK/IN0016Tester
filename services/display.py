@@ -1,3 +1,5 @@
+import os
+from PIL import ImageFont, ImageDraw, Image
 from numpy import sin, pi
 import libraries.serialDisplay as serilDisplay
 from datetime import datetime
@@ -12,6 +14,7 @@ class display:
     def __init__(
         self,
         communicationInfoJson: Dict[str, Any],
+        errorFont: Dict[str, Any],
         boardService: board,
         logger: logging.Logger = None,
     ) -> None:
@@ -28,17 +31,25 @@ class display:
         """
         # Validate the required keys in communicationInfoJson
 
-        required_keys = ["port", "baudrate", "rtscts", "timeout"]
+        self.__checkDictionaryParameter(
+            communicationInfoJson, ["port", "baudrate", "rtscts", "timeout"]
+        )
 
-        for key in required_keys:
-            if key not in communicationInfoJson:
-                raise ValueError(f"Missing required key: {key}")
-            # end if
-        # end for
+        self.__checkDictionaryParameter(errorFont, ["path", "fontSize"])
 
         if not boardService:
             raise ValueError("boardService must not be None")
         # end if
+
+        # saving font values
+        path = os.path.dirname(os.path.realpath(__file__))
+        path = path[: path.rfind("services")]
+
+        if errorFont["path"][0] == "/":
+            errorFont["path"] = errorFont["path"][1:]
+
+        self.__font_path = path + errorFont["path"]
+        self.__font_size = errorFont["fontSize"]
 
         screen = serilDisplay.spiScreen(
             logger,
@@ -71,6 +82,14 @@ class display:
         self.__message_received("page0")
 
     # end def
+
+    def __checkDictionaryParameter(self, dictionary: Dict[str, Any], keys: list):
+
+        for key in keys:
+            if key not in dictionary:
+                raise ValueError(f"Missing required key: {key}")
+            # end if
+        # end for
 
     def __mapEvents(self):
         # map every command and its related function. Then at __message_received
@@ -118,19 +137,64 @@ class display:
     # end def
 
     def __printError(self, message):
-        listOfWords = message.split(" ")
-        firstSec = listOfWords[int(len(listOfWords) / 3)]
-        secondSec = listOfWords[int(len(listOfWords) / 3 * 2)]
-        pt1 = message[: message.index(firstSec)].strip()
-        pt2 = message[message.index(firstSec) : message.index(secondSec)].strip()
-        pt3 = message[message.index(secondSec) :].strip()
+
+        splittedMessage, lineHeight = self.__getTextWidth(message)
+
+        # Only 3 lines can be displayed as maximum
+        if len(splittedMessage) > 3:
+            s = ""
+
+            for line in splittedMessage[2:]:
+                s = f"{s} {line.strip()}"
+            # end for
+
+            splittedMessage = splittedMessage[:2]
+            splittedMessage.append(s)
 
         self.__screenService.sendMessage('xstr 34,19,250,35,0,WHITE,0,1,1,0,"Error"')
-        self.__screenService.sendMessage(f'xstr 34,54,250,35,0,WHITE,0,1,1,0,"{pt1}"')
 
-        self.__screenService.sendMessage(f'xstr 34,89,250,35,0,WHITE,0,1,1,0,"{pt2}"')
+        y = 19 + 35
+        for line in splittedMessage:
+            self.__screenService.sendMessage(
+                f'xstr 34,{y},250,{lineHeight},2,WHITE,0,1,1,0,"{line}"'
+            )
+            y += lineHeight + 5
+        # end for
 
-        self.__screenService.sendMessage(f'xstr 34,124,250,35,0,WHITE,0,1,1,0,"{pt3}"')
+    def __getTextWidth(self, text):
+        image = Image.new("RGB", (1, 1))
+        draw = ImageDraw.Draw(image)
+        font = ImageFont.truetype(self.__font_path, self.__font_size)
+
+        words = text.split()
+        lines = []
+        current_line = ""
+        line_height = 0
+
+        for word in words:
+            test_line = f"{current_line} {word}".strip()
+            txtbox = draw.textbbox((0, 0), test_line, font=font)
+            text_width = txtbox[2] - txtbox[0]
+
+            if len(lines) == 0:
+                line_height = txtbox[3] - txtbox[1]
+
+            if text_width <= 250:
+                current_line = test_line
+
+            else:
+                lines.append(current_line)
+                current_line = word
+            # end if
+
+        # end for
+
+        if current_line:
+            lines.append(current_line)
+
+        return (lines, line_height)
+
+    # end def
 
     def __processLoadingAnnimation(self):
         with self.__showLoadingAnimation_lock:
@@ -235,7 +299,9 @@ class display:
 
         else:
             self.__screenService.sendMessage("page 6")
-            self.__printError("No se pudo programar la tarjeta")
+            self.__printError(
+                "No se pudo programar la tarjeta porque xd parangaricutirimicuaro"
+            )
 
     # end def
 

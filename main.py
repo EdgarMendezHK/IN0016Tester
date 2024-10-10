@@ -1,10 +1,10 @@
-import logging
 import json
 from services.openOCD import openOCD
 from services.board import board
 from datetime import datetime
 from services.display import display
 import services.gpio as gpio
+from libraries.loggerSetup import setup_logger
 
 
 def loadConfig():
@@ -18,17 +18,7 @@ def loadConfig():
 
 def main(name, config):
     # initializing logger
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-    console_handler.setFormatter(formatter)
-
-    logger.addHandler(console_handler)
+    logger = setup_logger(name)
 
     # initializing gpio service
     gpioService = gpio.GPIO()

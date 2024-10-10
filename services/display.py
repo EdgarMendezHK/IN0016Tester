@@ -107,7 +107,7 @@ class display:
 
     # end def
 
-    def __getTextWidth(self, text):
+    def __getTextWidth(self, text: str):
         image = Image.new("RGB", (1, 1))
         draw = ImageDraw.Draw(image)
         font = ImageFont.truetype(self.__font_path, self.__font_size)
@@ -185,7 +185,7 @@ class display:
 
     # end def
 
-    def __message_received(self, message):
+    def __message_received(self, message: str):
         function = message.split(";")[0]
         params = message.split(";")
 
@@ -217,7 +217,7 @@ class display:
 
     # end def
 
-    def __printError(self, message):
+    def __printError(self, message: str):
 
         splittedMessage, lineHeight = self.__getTextWidth(message)
 
@@ -310,7 +310,7 @@ class display:
 
     # end def
 
-    def __startPage2(self, message):
+    def __startPage2(self, message: str):
         # separating command from parameters.
 
         # checking for wave id to run the loading animation thread
@@ -362,7 +362,7 @@ class display:
 
     # end def
 
-    def __startPage5(self, message):
+    def __startPage5(self, message: str):
         animationStarted = False
 
         for part in message:
@@ -502,12 +502,12 @@ class display:
 
     # end def
 
-    def sendMessage(self, message):
+    def sendMessage(self, message: str):
         self.__screenService.sendMessage(message)
 
     # end def
 
-    def showLoadingAnimation(self, show, waveFormObjectId):
+    def showLoadingAnimation(self, show: bool, waveFormObjectId: int):
         with self.__showLoadingAnimation_lock:
             self.__showLoadingAnimation = show
             self.__waveID = waveFormObjectId

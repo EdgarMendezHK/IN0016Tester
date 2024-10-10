@@ -1,7 +1,6 @@
 from typing import Dict, Any
 from services.openOCD import openOCD
 from libraries.serialDevice import serialDevice
-import logging
 
 
 class board:
@@ -9,7 +8,6 @@ class board:
         self,
         openocdSerivce: openOCD,
         communicationInfoJson: Dict[str, Any],
-        logger: logging,
     ) -> None:
         """Initialize board with the given configuration."""
         required_keys = ["port", "baudrate", "rtscts", "timeout"]
@@ -21,7 +19,6 @@ class board:
         # end for
 
         self.__serial = serialDevice(
-            logger,
             communicationInfoJson["port"],
             communicationInfoJson["baudrate"],
             communicationInfoJson["rtscts"],
@@ -29,6 +26,7 @@ class board:
             stopBits=communicationInfoJson["stopBits"],
             byteSize=communicationInfoJson["byteSize"],
             parity=communicationInfoJson["parity"],
+            loggerName="board serial communication",
         )
 
         self._openOCD_service = openocdSerivce

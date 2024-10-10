@@ -2,6 +2,7 @@ import serial
 import threading
 import logging
 from libraries.cancellationToken import cancellationToken
+from libraries.loggerSetup import setup_logger
 from queue import Queue
 from time import sleep
 from typing import Callable, Union, List
@@ -10,7 +11,6 @@ from typing import Callable, Union, List
 class serialDevice:
     def __init__(
         self,
-        logger: logging,
         port: str,
         baudrate: int,
         rtsCts: bool,
@@ -18,8 +18,9 @@ class serialDevice:
         stopBits: int = 1,
         byteSize: int = 8,
         parity: str = "N",
+        loggerName: str = __name__,
     ) -> None:
-        self.__loggingService = logger
+        self.__loggingService = setup_logger(loggerName)
         self.__outputMessages = Queue(maxsize=100)
         self.__inputMessages = Queue(maxsize=100)
 
@@ -118,13 +119,7 @@ class serialDevice:
 
     # end def
 
-    def __writingTaskAux(
-        self,
-        task: Callable[[], Union[str, List[str]]],
-        token: cancellationToken,
-        identifier: str,
-        wait: float,
-    ):
+    def __writingTaskAux(self, task, token, identifier, wait):
         self.__loggingService.info(f"{identifier}Thread started")
 
         while not self.token.cancelled and not token.cancelled:

@@ -4,7 +4,6 @@ from numpy import sin, pi
 from datetime import datetime
 from typing import Dict, Any
 import os
-import logging
 import threading
 import time
 import libraries.serialDevice as serialDisplay
@@ -27,7 +26,6 @@ class display:
         errorFont: Dict[str, Any],
         boardService: board,
         gpioService: gpio.GPIO,
-        logger: logging.Logger = None,
     ) -> None:
         """
         Initialize a new instance for the serial display device.
@@ -63,11 +61,11 @@ class display:
         self.__font_size = errorFont["fontSize"]
 
         screen = serialDisplay.serialDevice(
-            logger,
             communicationInfoJson["port"],
             communicationInfoJson["baudrate"],
             communicationInfoJson["rtscts"],
             communicationInfoJson["timeout"],
+            loggerName="screen serial communication",
         )
 
         self.__showLoadingAnimation_lock = threading.Lock()

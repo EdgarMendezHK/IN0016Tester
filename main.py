@@ -16,9 +16,7 @@ def loadConfig():
 # end def
 
 
-def main(name, config):
-    # initializing logger
-    logger = setup_logger(name)
+def main(config):
 
     # initializing gpio service
     gpioService = gpio.GPIO()
@@ -26,15 +24,11 @@ def main(name, config):
     # initializing openocd service
     openOCDService = openOCD(config["openocd"])
 
-    boardService = board(openOCDService, config["pcbConfig"], logger)
+    boardService = board(openOCDService, config["pcbConfig"])
 
     # initializing screen service
     screen = display(
-        config["displayConfig"],
-        config["errorFont"],
-        boardService,
-        gpioService,
-        logger,
+        config["displayConfig"], config["errorFont"], boardService, gpioService
     )
 
     # main loop for sending messages and exit the program
@@ -70,7 +64,7 @@ def main(name, config):
 if __name__ == "__main__":
     try:
         config = loadConfig()
-        main(__name__, config)
+        main(config)
     except Exception as s:
         print(s)
 # end if

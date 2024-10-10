@@ -1,6 +1,7 @@
 import serial
 import threading
-import logging
+import traceback
+import sys
 from libraries.cancellationToken import cancellationToken
 from libraries.loggerSetup import setup_logger
 from queue import Queue
@@ -80,8 +81,11 @@ class serialDevice:
                         self.__inputMessages.put(message)
 
             except Exception as e:
-                self.__loggingService.error(f"Read error: {e}")
-                print(f"Read error: {e}")
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                traceback_details = traceback.extract_tb(exc_traceback)
+
+                for tb in traceback_details:
+                    self.__loggingService.error(f"Read error: Line {tb.line}. {e}")
             # end try-except
 
         # end while

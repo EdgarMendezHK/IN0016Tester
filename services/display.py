@@ -345,7 +345,7 @@ class display:
     # end def
 
     def __startPage3(self):
-        if self.__testButton("DispBtn On\r\n"):
+        if self.__testButton("DispBtn On\r\n", gpio.InputPin.DISPENSE_LED):
             self.__screenService.sendMessage("page 4")
         else:
             self.__printError("No se detectó el botón.\n PRUEBA NO APROBADA")
@@ -353,7 +353,7 @@ class display:
     # end def
 
     def __startPage4(self):
-        if self.__testButton("fillBtn On\r\n"):
+        if self.__testButton("fillBtn On\r\n", gpio.InputPin.FILL_LED):
             self.__screenService.sendMessage("page 5")
         else:
             self.__printError("No se detectó el botón.\n PRUEBA NO APROBADA")
@@ -377,7 +377,7 @@ class display:
 
         self.__gpioService.setPin(gpio.OutputPin.FLOATING_SWITCH, True)
 
-        result = self.__testButton("FloatingSwitchOn\r\n", 10)
+        result = self.__testButton("FloatingSwitchOn\r\n", timeout=10)
 
         self.__gpioService.togglePin(gpio.OutputPin.FLOATING_SWITCH)
 
@@ -389,7 +389,7 @@ class display:
         self.__loadProgramToBoard(firmware.productionProgram)
 
         if result:
-            self.__screenService.sendMessage("page 8")
+            self.__testBoardRelays()
         else:
             self.__screenService.sendMessage("page 9")
 
@@ -398,9 +398,16 @@ class display:
     def __startPage10(self):
         self.__screenService.sendMessage("page 10")
 
-    def __testButton(self, expectedMessage: str, timeout: float = 60) -> bool:
+    def __testButton(
+        self,
+        expectedMessage: str,
+        ledInput: gpio.InputPin | None = None,
+        timeout: float = 60,
+    ) -> bool:
         # start a timer for 60 seconds or something
         startTime = time.time()
+
+        isLEDActive = True
 
         while True:
             if time.time() - startTime > timeout:
@@ -410,7 +417,14 @@ class display:
             # check on input messages messages to check if the button was pressed
             message = self.__boardService.getMessage()
 
-            if isinstance(message, str) and message.strip() == expectedMessage.strip():
+            if ledInput:
+                isLEDActive = self.__gpioService.readPin(ledInput)
+
+            if (
+                isinstance(message, str)
+                and message.strip() == expectedMessage.strip()
+                and isLEDActive
+            ):
                 return True
             # end if
 
@@ -437,10 +451,13 @@ class display:
             ],
         )
 
-        self.__screenService.sendMessage(f"page { 8 if result else 9 }")
+        if result:
+            self.__screenService.sendMessage("page 8")
+        else:
+            self.__screenService.sendMessage(f"page 9")
 
     def __testGPIO(
-        self, inputs: list[gpio.OutputPin], outputs: list[gpio.OutputPin]
+        self, inputs: list[gpio.InputPin], outputs: list[gpio.OutputPin]
     ) -> bool:
         self.__gpioService.setPin(outputs, True)
 
@@ -466,6 +483,58 @@ class display:
         self.__gpioService.togglePin(outputs)
 
         return result
+
+    # end def
+
+    def __testBoardRelays(self):
+        # testing agitator relay. Expected to return True. The rest of the relays must return False.
+        self.__boardService.writeMessage("agitatorOn")
+
+        if not (
+            self.__testGPIO([gpio.InputPin.AGITATOR_LINE], [gpio.OutputPin.LINE])
+            and not self.__testGPIO([gpio.InputPin.FILL_LINE], [gpio.OutputPin.LINE])
+            and not self.__testGPIO(
+                [gpio.InputPin.DISPENSER_LINE], [gpio.OutputPin.LINE]
+            )
+        ):
+            self.__screenService.sendMessage("page 9")
+        # end if
+
+        self.__boardService.writeMessage("agitatorOff")
+
+        # testing Fill relay. Expected to return True. The rest of the relays must return False.
+        self.__boardService.writeMessage("FillOn")
+
+        if not (
+            self.__testGPIO([gpio.InputPin.FILL_LINE], [gpio.OutputPin.LINE])
+            and not self.__testGPIO(
+                [gpio.InputPin.AGITATOR_LINE], [gpio.OutputPin.LINE]
+            )
+            and not self.__testGPIO(
+                [gpio.InputPin.DISPENSER_LINE], [gpio.OutputPin.LINE]
+            )
+        ):
+            self.__screenService.sendMessage("page 9")
+        # end if
+
+        self.__boardService.writeMessage("FillOff")
+
+        # testing Dispenser relay. Expected to return True. The rest of the relays must return False.
+
+        self.__boardService.writeMessage("DispOff")
+
+        if not (
+            self.__testGPIO([gpio.InputPin.DISPENSER_LINE], [gpio.OutputPin.LINE])
+            and not self.__testGPIO(
+                [gpio.InputPin.AGITATOR_LINE], [gpio.OutputPin.LINE]
+            )
+            and not self.__testGPIO([gpio.InputPin.FILL_LINE], [gpio.OutputPin.LINE])
+        ):
+            self.__screenService.sendMessage("page 9")
+        # end if
+
+        self.__boardService.writeMessage("DispOn")
+        self.__screenService.sendMessage("page 8")
 
     # end def
 

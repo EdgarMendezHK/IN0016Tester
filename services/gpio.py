@@ -8,6 +8,7 @@ class OutputPin(Enum):
     HARNESS_GREEN = 19
     HARNESS_BLACK = 20
     HARNESS_WHITE = 26
+    LINE = 22
 
 
 # end class
@@ -18,6 +19,11 @@ class InputPin(Enum):
     HARNESS_GREEN = 6
     HARNESS_BLACK = 12
     HARNESS_WHITE = 13
+    AGITATOR_LINE = 27
+    FILL_LINE = 17
+    DISPENSER_LINE = 23
+    DISPENSE_LED = 24
+    FILL_LED = 25
 
 
 # end class

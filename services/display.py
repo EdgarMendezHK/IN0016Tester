@@ -422,29 +422,34 @@ class display:
     # end def
 
     def __testCable(self):
-        self.__gpioService.setPin(
+        result = self.__testGPIO(
+            [
+                gpio.pinDefinition.harnessBlack_Input,
+                gpio.pinDefinition.harnessRed_Input,
+                gpio.pinDefinition.harnessWhite_Input,
+                gpio.pinDefinition.harnessGreen_Input,
+            ],
             [
                 gpio.pinDefinition.harnessBlack_Output,
                 gpio.pinDefinition.harnessRed_Output,
                 gpio.pinDefinition.harnessWhite_Output,
                 gpio.pinDefinition.harnessGreen_Output,
             ],
-            True,
         )
+
+        self.__screenService.sendMessage(f"page { 8 if result else 9 }")
+
+    def __testGPIO(
+        self, inputs: list[gpio.pinDefinition], outputs: list[gpio.pinDefinition]
+    ) -> bool:
+        self.__gpioService.setPin(outputs, True)
 
         attempts = 0
         result = False
 
         while attempts < 5 and not result:
 
-            for level in self.__gpioService.readPin(
-                [
-                    gpio.pinDefinition.harnessBlack_Input,
-                    gpio.pinDefinition.harnessRed_Input,
-                    gpio.pinDefinition.harnessWhite_Input,
-                    gpio.pinDefinition.harnessGreen_Input,
-                ]
-            ):
+            for level in self.__gpioService.readPin(inputs):
                 attempts += 1
 
                 if not level:
@@ -458,16 +463,9 @@ class display:
 
         # end while
 
-        self.__screenService.sendMessage(f"page { 8 if result else 9 }")
+        self.__gpioService.togglePin(outputs)
 
-        self.__gpioService.togglePin(
-            [
-                gpio.pinDefinition.harnessBlack_Output,
-                gpio.pinDefinition.harnessRed_Output,
-                gpio.pinDefinition.harnessBlack_Output,
-                gpio.pinDefinition.harnessBlack_Output,
-            ]
-        )
+        return result
 
     # end def
 

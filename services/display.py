@@ -375,11 +375,11 @@ class display:
 
         time.sleep(2)
 
-        self.__gpioService.setPin(gpio.pinDefinition.floatingSwitch_Output, True)
+        self.__gpioService.setPin(gpio.OutputPin.FLOATING_SWITCH, True)
 
         result = self.__testButton("FloatingSwitchOn\r\n", 10)
 
-        self.__gpioService.togglePin(gpio.pinDefinition.floatingSwitch_Output)
+        self.__gpioService.togglePin(gpio.OutputPin.FLOATING_SWITCH)
 
         # turn off loadiding animation
         if animationStarted:
@@ -424,23 +424,23 @@ class display:
     def __testCable(self):
         result = self.__testGPIO(
             [
-                gpio.pinDefinition.harnessBlack_Input,
-                gpio.pinDefinition.harnessRed_Input,
-                gpio.pinDefinition.harnessWhite_Input,
-                gpio.pinDefinition.harnessGreen_Input,
+                gpio.InputPin.HARNESS_BLACK,
+                gpio.InputPin.HARNESS_RED,
+                gpio.InputPin.HARNESS_WHITE,
+                gpio.InputPin.HARNESS_GREEN,
             ],
             [
-                gpio.pinDefinition.harnessBlack_Output,
-                gpio.pinDefinition.harnessRed_Output,
-                gpio.pinDefinition.harnessWhite_Output,
-                gpio.pinDefinition.harnessGreen_Output,
+                gpio.OutputPin.HARNESS_BLACK,
+                gpio.OutputPin.HARNESS_RED,
+                gpio.OutputPin.HARNESS_WHITE,
+                gpio.OutputPin.HARNESS_GREEN,
             ],
         )
 
         self.__screenService.sendMessage(f"page { 8 if result else 9 }")
 
     def __testGPIO(
-        self, inputs: list[gpio.pinDefinition], outputs: list[gpio.pinDefinition]
+        self, inputs: list[gpio.OutputPin], outputs: list[gpio.OutputPin]
     ) -> bool:
         self.__gpioService.setPin(outputs, True)
 

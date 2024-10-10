@@ -1,13 +1,23 @@
-import os
+from services.board import board
 from PIL import ImageFont, ImageDraw, Image
 from numpy import sin, pi
-import libraries.serialDisplay as serilDisplay
 from datetime import datetime
-import logging
 from typing import Dict, Any
+import os
+import logging
 import threading
-from services.board import board
 import time
+import libraries.serialDevice as serialDisplay
+import services.gpio as gpio
+from enum import Enum
+
+
+class firmware(Enum):
+    testProgram = 0
+    productionProgram = 1
+
+
+# end class
 
 
 class display:
@@ -16,6 +26,7 @@ class display:
         communicationInfoJson: Dict[str, Any],
         errorFont: Dict[str, Any],
         boardService: board,
+        gpioService: gpio.GPIO,
         logger: logging.Logger = None,
     ) -> None:
         """
@@ -51,7 +62,7 @@ class display:
         self.__font_path = path + errorFont["path"]
         self.__font_size = errorFont["fontSize"]
 
-        screen = serilDisplay.spiScreen(
+        screen = serialDisplay.serialDevice(
             logger,
             communicationInfoJson["port"],
             communicationInfoJson["baudrate"],
@@ -68,6 +79,7 @@ class display:
 
         screen.runWritingTask(self.__updateTime, "datetimeUpdate", 1)
         screen.runWritingTask(self.__processLoadingAnnimation, "loading", 1 / 60)
+        screen.runWritingTask(self.__handShake, "connectionHandShake", 5)
 
         screen.onMessageReceivedEvent(self.__message_received)
 
@@ -81,6 +93,8 @@ class display:
 
         self.__message_received("page0")
 
+        self.__gpioService = gpioService
+
     # end def
 
     def __checkDictionaryParameter(self, dictionary: Dict[str, Any], keys: list):
@@ -91,6 +105,70 @@ class display:
             # end if
         # end for
 
+    # end def
+
+    def __getTextWidth(self, text):
+        image = Image.new("RGB", (1, 1))
+        draw = ImageDraw.Draw(image)
+        font = ImageFont.truetype(self.__font_path, self.__font_size)
+
+        words = text.split()
+        lines = []
+        current_line = ""
+        line_height = 0
+
+        for word in words:
+            test_line = f"{current_line} {word}".strip()
+            txtbox = draw.textbbox((0, 0), test_line, font=font)
+            text_width = txtbox[2] - txtbox[0]
+
+            if len(lines) == 0:
+                line_height = txtbox[3] - txtbox[1]
+
+            if text_width <= 250:
+                current_line = test_line
+
+            else:
+                lines.append(current_line)
+                current_line = word
+            # end if
+
+        # end for
+
+        if current_line:
+            lines.append(current_line)
+
+        return (lines, line_height)
+
+    # end def
+
+    def __handShake(self):
+        return "timeoutTMR.en=1"
+
+    # end def
+
+    def __loadProgramToBoard(self, programToLoad: firmware) -> bool:
+
+        # load test program to microcontroller
+        attempts = 0
+        xd = False
+
+        while attempts < 3 and not xd:
+            time.sleep(1)
+            if programToLoad == firmware.productionProgram:
+                xd = self.__boardService.LoadFirmware()
+            elif programToLoad == firmware.testProgram:
+                xd = self.__boardService.LoadTestProgram()
+            else:
+                break
+            attempts = attempts + 1
+
+        # end while
+
+        return xd
+
+    # end def
+
     def __mapEvents(self):
         # map every command and its related function. Then at __message_received
         # check if the message receved is in the dicctionary and execute the function asosiated with it
@@ -100,6 +178,9 @@ class display:
             "page2": self.__startPage2,
             "page3": self.__startPage3,
             "page4": self.__startPage4,
+            "page5": self.__startPage5,
+            "page10": self.__startPage10,
+            "testCable": self.__testCable,
         }
 
     # end def
@@ -151,6 +232,8 @@ class display:
             splittedMessage = splittedMessage[:2]
             splittedMessage.append(s)
 
+        self.__screenService.sendMessage("page 6")
+
         self.__screenService.sendMessage('errorMsg.txt=""')
 
         self.__screenService.sendMessage('xstr 34,19,250,35,0,WHITE,0,1,1,0,"Error"')
@@ -162,39 +245,6 @@ class display:
             )
             y += lineHeight + 5
         # end for
-
-    def __getTextWidth(self, text):
-        image = Image.new("RGB", (1, 1))
-        draw = ImageDraw.Draw(image)
-        font = ImageFont.truetype(self.__font_path, self.__font_size)
-
-        words = text.split()
-        lines = []
-        current_line = ""
-        line_height = 0
-
-        for word in words:
-            test_line = f"{current_line} {word}".strip()
-            txtbox = draw.textbbox((0, 0), test_line, font=font)
-            text_width = txtbox[2] - txtbox[0]
-
-            if len(lines) == 0:
-                line_height = txtbox[3] - txtbox[1]
-
-            if text_width <= 250:
-                current_line = test_line
-
-            else:
-                lines.append(current_line)
-                current_line = word
-            # end if
-
-        # end for
-
-        if current_line:
-            lines.append(current_line)
-
-        return (lines, line_height)
 
     # end def
 
@@ -280,15 +330,7 @@ class display:
         self.__screenService.sendMessage("page 2")
 
         # load test program to microcontroller
-        attempts = 0
-        xd = False
-
-        while attempts < 3 and not xd:
-            time.sleep(1)
-            xd = self.__boardService.LoadTestProgram()
-            attempts = attempts + 1
-
-        # end while
+        boardCorrectlyProgrammed = self.__loadProgramToBoard(firmware.testProgram)
 
         # turn off loadiding animation
         if animationStarted:
@@ -296,54 +338,138 @@ class display:
             self.__screenService.sendMessage("cle 2,255")  # cleaning id 2 waveform
 
         # go to page 3 if succesfuly programmed
-        if xd:
+        if boardCorrectlyProgrammed:
             self.__screenService.sendMessage("page 3")
             self.__startPage3()
-
         else:
-            self.__screenService.sendMessage("page 6")
-            self.__printError(
-                "No se pudo programar la tarjeta porque xd parangaricutirimicuaro"
-            )
+            self.__screenService.sendMessage("page 9")
 
     # end def
 
     def __startPage3(self):
-        self.__testButton("DispBtn On\r\n", 4)
+        if self.__testButton("DispBtn On\r\n"):
+            self.__screenService.sendMessage("page 4")
+        else:
+            self.__printError("No se detectó el botón.\n PRUEBA NO APROBADA")
 
     # end def
 
     def __startPage4(self):
-        self.__testButton("RefillBtn On\r\n", 5)
+        if self.__testButton("fillBtn On\r\n"):
+            self.__screenService.sendMessage("page 5")
+        else:
+            self.__printError("No se detectó el botón.\n PRUEBA NO APROBADA")
 
     # end def
 
-    def __testButton(self, expectedMessage: str, nextPage: int) -> None:
-        # start a timer for 10 seconds or something
-        timeout = 10
+    def __startPage5(self, message):
+        animationStarted = False
+
+        for part in message:
+            if part.lower().index("waveid=") >= 0:
+                waveId = part.split("=")
+                if len(waveId) == 2:
+                    self.showLoadingAnimation(True, waveId[1])
+                    animationStarted = True
+                # end if
+            # end if
+        # end for
+
+        time.sleep(2)
+
+        self.__gpioService.setPin(gpio.pinDefinition.floatingSwitch_Output, True)
+
+        result = self.__testButton("FloatingSwitchOn\r\n", 10)
+
+        self.__gpioService.togglePin(gpio.pinDefinition.floatingSwitch_Output)
+
+        # turn off loadiding animation
+        if animationStarted:
+            self.showLoadingAnimation(False, waveId[1])
+            self.__screenService.sendMessage("cle 2,255")  # cleaning id 2 waveform
+
+        self.__loadProgramToBoard(firmware.productionProgram)
+
+        if result:
+            self.__screenService.sendMessage("page 8")
+        else:
+            self.__screenService.sendMessage("page 9")
+
+    # end def
+
+    def __startPage10(self):
+        self.__screenService.sendMessage("page 10")
+
+    def __testButton(self, expectedMessage: str, timeout: float = 60) -> bool:
+        # start a timer for 60 seconds or something
         startTime = time.time()
 
         while True:
             if time.time() - startTime > timeout:
-                self.__screenService.sendMessage("page 6")
-                self.__screenService.sendMessage(
-                    "xstr 10,10,100,100,0,WHITE,GREEN,2,1,0,XD"
-                )
-                return
+                return False
             # end if
 
             # check on input messages messages to check if the button was pressed
             message = self.__boardService.getMessage()
 
-            if isinstance(message, str) and message.strip() == expectedMessage:
-                self.__screenService.sendMessage("page " + str(nextPage))
-                break
+            if isinstance(message, str) and message.strip() == expectedMessage.strip():
+                return True
             # end if
 
         # end while
 
         # need to add a cancel test button on every screen
         pass
+
+    # end def
+
+    def __testCable(self):
+        self.__gpioService.setPin(
+            [
+                gpio.pinDefinition.harnessBlack_Output,
+                gpio.pinDefinition.harnessRed_Output,
+                gpio.pinDefinition.harnessWhite_Output,
+                gpio.pinDefinition.harnessGreen_Output,
+            ],
+            True,
+        )
+
+        attempts = 0
+        result = False
+
+        while attempts < 5 and not result:
+
+            for level in self.__gpioService.readPin(
+                [
+                    gpio.pinDefinition.harnessBlack_Input,
+                    gpio.pinDefinition.harnessRed_Input,
+                    gpio.pinDefinition.harnessWhite_Input,
+                    gpio.pinDefinition.harnessGreen_Input,
+                ]
+            ):
+                attempts += 1
+
+                if not level:
+                    result = False
+                    break
+                else:
+                    result = True
+                # end if
+
+            # end for
+
+        # end while
+
+        self.__screenService.sendMessage(f"page { 8 if result else 9 }")
+
+        self.__gpioService.togglePin(
+            [
+                gpio.pinDefinition.harnessBlack_Output,
+                gpio.pinDefinition.harnessRed_Output,
+                gpio.pinDefinition.harnessBlack_Output,
+                gpio.pinDefinition.harnessBlack_Output,
+            ]
+        )
 
     # end def
 
@@ -372,11 +498,14 @@ class display:
         """
         self.__screenService.closeConnection()
         self.__boardService.dispose()
+        self.__gpioService.cleanup()
 
     # end def
 
     def sendMessage(self, message):
         self.__screenService.sendMessage(message)
+
+    # end def
 
     def showLoadingAnimation(self, show, waveFormObjectId):
         with self.__showLoadingAnimation_lock:

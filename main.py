@@ -4,6 +4,7 @@ from services.openOCD import openOCD
 from services.board import board
 from datetime import datetime
 from services.display import display
+import services.gpio as gpio
 
 
 def loadConfig():
@@ -29,13 +30,22 @@ def main(name, config):
 
     logger.addHandler(console_handler)
 
+    # initializing gpio service
+    gpioService = gpio.GPIO()
+
     # initializing openocd service
     openOCDService = openOCD(config["openocd"])
 
     boardService = board(openOCDService, config["pcbConfig"], logger)
 
     # initializing screen service
-    screen = display(config["displayConfig"], config["errorFont"], boardService, logger)
+    screen = display(
+        config["displayConfig"],
+        config["errorFont"],
+        boardService,
+        gpioService,
+        logger,
+    )
 
     # main loop for sending messages and exit the program
     loadAnimationVisible = False

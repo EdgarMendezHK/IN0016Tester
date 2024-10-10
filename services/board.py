@@ -1,6 +1,6 @@
 from typing import Dict, Any
 from services.openOCD import openOCD
-from libraries.serialDisplay import spiScreen
+from libraries.serialDevice import serialDevice
 import logging
 
 
@@ -20,15 +20,20 @@ class board:
             # end if
         # end for
 
-        self.__serial = spiScreen(
+        self.__serial = serialDevice(
             logger,
             communicationInfoJson["port"],
             communicationInfoJson["baudrate"],
             communicationInfoJson["rtscts"],
             communicationInfoJson["timeout"],
+            stopBits=communicationInfoJson["stopBits"],
+            byteSize=communicationInfoJson["byteSize"],
+            parity=communicationInfoJson["parity"],
         )
 
         self._openOCD_service = openocdSerivce
+
+    # end def
 
     def LoadTestProgram(self) -> bool:
         result = self._openOCD_service.burn_test_program()

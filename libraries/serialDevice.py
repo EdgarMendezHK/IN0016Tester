@@ -1,33 +1,45 @@
 import serial
 import threading
-import libraries.cancellationToken as ct
+import logging
+from libraries.cancellationToken import cancellationToken
 from queue import Queue
 from time import sleep
 from typing import Callable, Union, List
 
 
-class spiScreen:
-
-    def __del__(self):
-        if len(self.__tasks.items()) > 0 or self.serialConnection.is_open:
-            self.closeConnection()
-
-    # end def
-    def __init__(self, logger, port, baudrate, rtsCts, timeout=0):
+class serialDevice:
+    def __init__(
+        self,
+        logger: logging,
+        port: str,
+        baudrate: int,
+        rtsCts: bool,
+        timeout: int = 0,
+        stopBits: int = 1,
+        byteSize: int = 8,
+        parity: str = "N",
+    ) -> None:
         self.__loggingService = logger
         self.__outputMessages = Queue(maxsize=100)
         self.__inputMessages = Queue(maxsize=100)
 
         self.serialConnection = serial.Serial(
-            port, baudrate, timeout=timeout, rtscts=rtsCts
+            port,
+            baudrate,
+            timeout=timeout,
+            rtscts=rtsCts,
+            bytesize=byteSize,
+            stopbits=stopBits,
+            parity=parity,
         )
-        self.token = ct.cancellationToken()
+        self.token = cancellationToken()
 
         readingThread = threading.Thread(
             target=self.__read, args=[self.serialConnection, self.token]
         )
         writingThread = threading.Thread(
-            target=self.__write, args=[self.serialConnection, self.token]
+            target=self.__write,
+            args=[self.serialConnection, self.token, b"\xff\xff\xff"],
         )
 
         readingThread.start()
@@ -42,13 +54,19 @@ class spiScreen:
 
     # end def
 
-    def __read(self, serial: serial, token):
+    def __del__(self):
+        if len(self.__tasks.items()) > 0 or self.serialConnection.is_open:
+            self.closeConnection()
+
+    # end def
+
+    def __read(self, serial: serial.Serial, token):
         m = b""
         self.__loggingService.info("readingThread started started")
 
         while not token.cancelled:
             try:
-                m = serial.readline()
+                m = serial.readline()  # is blocking
                 m = bytes(filter(lambda x: x in range(32, 127), m))
 
                 if m != b"":
@@ -70,7 +88,12 @@ class spiScreen:
 
     # end def
 
-    def __write(self, serial, token):
+    def __write(
+        self,
+        serial: serial.Serial,
+        token: cancellationToken,
+        termination: bytes = b"\n",
+    ):
         self.__loggingService.info("writingThread started")
         while not token.cancelled:
             try:
@@ -83,7 +106,7 @@ class spiScreen:
 
                 # enter t0.txt="1" to set text to 1
                 encodedMessage = (
-                    userMessage.encode("utf-8") + b"\xff\xff\xff"
+                    userMessage.encode("utf-8") + termination
                 )  # b't0.txt="1"\xff\xff\xff'
 
                 serial.write(encodedMessage)  # sendig message to spi device
@@ -95,7 +118,13 @@ class spiScreen:
 
     # end def
 
-    def __writingTaskAux(self, task, token, identifier, wait):
+    def __writingTaskAux(
+        self,
+        task: Callable[[], Union[str, List[str]]],
+        token: cancellationToken,
+        identifier: str,
+        wait: float,
+    ):
         self.__loggingService.info(f"{identifier}Thread started")
 
         while not self.token.cancelled and not token.cancelled:
@@ -119,12 +148,12 @@ class spiScreen:
 
     # end def
 
-    def __createTask(self, task, cancellationToken=None):
-        if cancellationToken is None:
-            cancellationToken = ct.cancellationToken()
+    def __createTask(self, task, token: cancellationToken = None):
+        if token is None:
+            token = cancellationToken()
         # end if
 
-        return {"task": task, "cancellationToken": cancellationToken}
+        return {"task": task, "cancellationToken": token}
 
     # end def
 
@@ -134,7 +163,7 @@ class spiScreen:
 
         for taskName, task in self.__tasks.items():
             self.__loggingService.info(f"joining {taskName}Thread")
-            task["task"].join()
+            task["task"].join(5)
             self.__loggingService.info(f"{taskName}Thread joined")
         # end for
 
@@ -176,7 +205,7 @@ class spiScreen:
         if identifier in self.__tasks:
             raise KeyError("Repeted key value")
         # end if
-        token = ct.cancellationToken()
+        token = cancellationToken()
         t = threading.Thread(
             target=self.__writingTaskAux,
             args=[callback, token, identifier, wait],

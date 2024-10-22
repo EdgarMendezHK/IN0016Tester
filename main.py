@@ -1,7 +1,6 @@
 import json
 from services.openOCD import openOCD
 from services.board import board
-from datetime import datetime
 from services.display import display
 import services.gpio as gpio
 from libraries.loggerSetup import setup_logger
@@ -31,6 +30,8 @@ def main(config):
         config["displayConfig"], config["errorFont"], boardService, gpioService
     )
 
+    logger = setup_logger(__name__)
+
     # main loop for sending messages and exit the program
     loadAnimationVisible = False
 
@@ -50,13 +51,13 @@ def main(config):
             # end if
         # end while
     except KeyboardInterrupt:
-        pass
+        logger.error("keyboard interrupt raised")
     # end try-catch
 
     # cleaning up
     screen.dispose()
 
-    print("bye")
+    logger.info("bye")
 
 
 # end def

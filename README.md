@@ -105,7 +105,7 @@ The following connections are necesary to flash the microcontroller.
 | :-------------------------: | :--------------------------: | :------------------------: |
 |            3.3V             |            1, 17             |             1              |
 |            SWDIO            |              24              |             2              |
-|             GND             | 6, 9, 14, 20, 25, 30, 34, 39 |            3, 4            |
+|             GND             | 6, 9, 14, 20, 25, 30, 34, 39 |            3, 5            |
 |           SWDCLK            |              23              |             4              |
 | $$\overline{\text{RESET}}$$ |              12              |             10             |
 
@@ -128,7 +128,7 @@ To install the required python libraries you need to locate at the project's pat
 ```
 python3 -m venv [environment name]
 source [environment name]/bin/activate
-pip install pyserial minimalmodbus
+pip install pyserial Pillow RPi.GPIO
 ```
 
 # Enabling serial and SPI communication
@@ -220,11 +220,11 @@ The following connections are necesary to communicate with the board's serial co
 
 <div style="width:100%; text-align:center;">
 
-| Raspberry pi pin | Communication port cable |
-| ---------------- | ------------------------ |
-| 2 (5V power)     | Red                      |
-| 25 (Ground)      | Black                    |
-| 27 (TXD)         | Green                    |
-| 28 (RXD)         | White                    |
+| Raspberry pi pin | Communication port cable | wavesgare (Poner en 3.3V, baud= 115200 , size= 8 bit , parity = none) |
+| ---------------- | ------------------------ | --------------------------------------------------------------------- |
+| 2 (5V power)     | Red                      | -                                                                     |
+| 25 (Ground)      | Black                    | Gnd                                                                   |
+| 27 (TXD)         | Green                    | Rx                                                                    |
+| 28 (RXD)         | White                    | Tx                                                                    |
 
 </div>
